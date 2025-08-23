@@ -200,12 +200,7 @@
 
 
 pipeline {
-    agent {
-        docker {
-            image 'docker/compose:latest'
-            args '-v /var/run/docker.sock:/var/run/docker.sock'
-        }
-    }
+    agent any
 
     options {
         skipDefaultCheckout()
@@ -240,7 +235,28 @@ pipeline {
             steps {
                 echo "🐳 Build and start containers with docker-compose"
                 script {
-                    sh "docker-compose -f ${COMPOSE_FILE} up -d --build --remove-orphans"
+                    // Try multiple approaches to run docker-compose
+                    sh """
+                        # Check if docker-compose is available
+                        if command -v docker-compose &> /dev/null; then
+                            echo "Using docker-compose command"
+                            docker-compose -f ${COMPOSE_FILE} up -d --build --remove-orphans
+                        elif docker compose version &> /dev/null; then
+                            echo "Using docker compose command"
+                            docker compose -f ${COMPOSE_FILE} up -d --build --remove-orphans
+                        else
+                            echo "Docker Compose not found, trying to install it..."
+                            # Try to install docker-compose if not available
+                            if command -v curl &> /dev/null; then
+                                curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-\$(uname -s)-\$(uname -m)" -o /usr/local/bin/docker-compose
+                                chmod +x /usr/local/bin/docker-compose
+                                docker-compose -f ${COMPOSE_FILE} up -d --build --remove-orphans
+                            else
+                                echo "❌ Cannot install docker-compose - curl not available"
+                                exit 1
+                            fi
+                        fi
+                    """
                 }
             }
         }
@@ -272,7 +288,15 @@ pipeline {
         failure {
             echo "❌ Deployment failed — gathering logs..."
             script {
-                sh "docker-compose -f ${COMPOSE_FILE} logs --no-color || true"
+                sh """
+                    if command -v docker-compose &> /dev/null; then
+                        docker-compose -f ${COMPOSE_FILE} logs --no-color || true
+                    elif docker compose version &> /dev/null; then
+                        docker compose -f ${COMPOSE_FILE} logs --no-color || true
+                    else
+                        echo "Cannot gather logs - Docker Compose not available"
+                    fi
+                """
             }
         }
         always {
