@@ -200,7 +200,12 @@
 
 
 pipeline {
-    agent any
+    agent {
+        docker {
+            image 'docker/compose:latest'
+            args '-v /var/run/docker.sock:/var/run/docker.sock'
+        }
+    }
 
     options {
         skipDefaultCheckout()
