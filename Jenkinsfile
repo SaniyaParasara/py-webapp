@@ -205,7 +205,6 @@ pipeline {
     options {
         skipDefaultCheckout()
         timestamps()
-        ansiColor('xterm')
     }
 
     parameters {
