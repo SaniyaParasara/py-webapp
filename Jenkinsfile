@@ -6,13 +6,8 @@ pipeline {
         timestamps()
     }
 
-    parameters {
-        choice(name: 'ENVIRONMENT', choices: ['local', 'production'], description: 'Choose deployment environment')
-    }
-
     environment {
-        LOCAL_PORT = '3000'
-        PRODUCTION_PORT = '4000'
+        PORT = '4000'
         IMAGE_NAME = 'restaurant-website'
         CONTAINER_NAME = 'restaurant-container'
     }
@@ -53,10 +48,9 @@ pipeline {
 
         stage('Deploy') {
             steps {
-                echo "🚀 Deploying to ${params.ENVIRONMENT}"
+                echo "🚀 Deploying to production"
                 script {
-                    def port = params.ENVIRONMENT == 'production' ? PRODUCTION_PORT : LOCAL_PORT
-                    sh "docker run -d --name ${CONTAINER_NAME} -p ${port}:80 ${IMAGE_NAME}"
+                    sh "docker run -d --name ${CONTAINER_NAME} -p ${PORT}:80 ${IMAGE_NAME}"
                 }
             }
         }
@@ -65,18 +59,17 @@ pipeline {
             steps {
                 echo "🔎 Health check"
                 script {
-                    def port = params.ENVIRONMENT == 'production' ? PRODUCTION_PORT : LOCAL_PORT
                     sleep 5
                     def code = sh (
-                        script: "curl -s -o /dev/null -w '%{http_code}' http://localhost:${port}/ || true",
+                        script: "curl -s -o /dev/null -w '%{http_code}' http://localhost:${PORT}/ || true",
                         returnStdout: true
                     ).trim()
 
-                    // if (code == '200') {
-                    //     echo "✅ Health check passed (HTTP 200)"
-                    // } else {
-                    //     error "❌ Health check failed. HTTP code: ${code}"
-                    // }
+                    if (code == '200') {
+                        echo "✅ Health check passed (HTTP 200)"
+                    } else {
+                        error "❌ Health check failed. HTTP code: ${code}"
+                    }
                 }
             }
         }
@@ -84,11 +77,8 @@ pipeline {
 
     post {
         success {
-            script {
-                def port = params.ENVIRONMENT == 'production' ? PRODUCTION_PORT : LOCAL_PORT
-                echo "🎉 Deployment succeeded!"
-                echo "🌐 Website available at: http://localhost:${port}"
-            }
+            echo "🎉 Deployment succeeded!"
+            echo "🌐 Website available at: http://localhost:${PORT}"
         }
         failure {
             echo "❌ Deployment failed!"
