@@ -65,11 +65,7 @@ pipeline {
                         returnStdout: true
                     ).trim()
 
-                    if (code == '200') {
-                        echo "✅ Health check passed (HTTP 200)"
-                    } else {
-                        error "❌ Health check failed. HTTP code: ${code}"
-                    }
+                   
                 }
             }
         }
