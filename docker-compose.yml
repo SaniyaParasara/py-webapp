@@ -1,0 +1,114 @@
+# version: '3.8'
+
+# services:
+#   restaurant-website:
+#     build:
+#       context: .
+#       dockerfile: Dockerfile
+#     container_name: restaurant-website-container
+#     ports:
+#     restart: unless-stopped
+#     environment:
+#       - NGINX_HOST=localhost
+#       - NGINX_PORT=80
+#     volumes:
+#       # Optional: Mount logs directory for debugging
+#       - ./logs:/var/log/nginx
+#     networks:
+#       - restaurant-network
+#     healthcheck:
+#       test: ["CMD", "curl", "-f", "http://localhost:80"]
+#       interval: 30s
+#       timeout: 10s
+#       retries: 3
+#       start_period: 40s
+#     labels:
+#       - "com.docker.compose.project=restaurant-website"
+#       - "com.docker.compose.service=web"
+#       - "traefik.enable=true"
+#       - "traefik.http.routers.restaurant.rule=Host(`localhost`)"
+#       - "traefik.http.routers.restaurant.entrypoints=web"
+
+#   # Optional: Add a reverse proxy (nginx) for production use
+#   nginx-proxy:
+#     image: nginx:alpine
+#     container_name: restaurant-nginx-proxy
+#     ports:
+#       - "80:80"
+#       - "443:443"
+#     volumes:
+#       - ./nginx-proxy.conf:/etc/nginx/nginx.conf:ro
+#       - ./ssl:/etc/nginx/ssl:ro
+#     depends_on:
+#       - restaurant-website
+#     networks:
+#       - restaurant-network
+#     restart: unless-stopped
+#     profiles:
+#       - production
+
+# networks:
+#   restaurant-network:
+#     driver: bridge
+#     name: restaurant-network
+
+# volumes:
+#   nginx-logs:
+#     driver: local
+
+version: '3.8'
+
+services:
+  restaurant-website:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: restaurant-website
+    restart: unless-stopped
+    networks:
+      - restaurant-network
+    # Optional: if you want to inspect files from host while developing:
+    # volumes:
+    #   - ./:/usr/share/nginx/html:ro
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:80/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    labels:
+      - "com.docker.compose.project=restaurant-website"
+      - "com.docker.compose.service=frontend"
+
+  nginx-proxy:
+    image: nginx:alpine
+    container_name: restaurant-nginx-proxy
+    restart: unless-stopped
+    depends_on:
+      - restaurant-website
+    ports:
+      - "9002:80"        # Host port 9002 -> proxy:80 (change if needed)
+      # - "443:443"      # Uncomment if enabling SSL later
+    volumes:
+      - ./nginx-proxy.conf:/etc/nginx/nginx.conf:ro
+      - ./logs:/var/log/nginx    # optional logs folder
+      # - ./ssl:/etc/nginx/ssl   # optional for certs
+    networks:
+      - restaurant-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:80/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    labels:
+      - "com.docker.compose.project=restaurant-website"
+      - "com.docker.compose.service=proxy"
+
+networks:
+  restaurant-network:
+    driver: bridge
+
+volumes:
+  nginx-logs:
+    driver: local
