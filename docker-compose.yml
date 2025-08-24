@@ -86,9 +86,10 @@ services:
     restart: unless-stopped
     depends_on:
       - restaurant-website
-    ports:
+    ports: 
       - "9002:80"        # Host port 9002 -> proxy:80 (change if needed)
       # - "443:443"      # Uncomment if enabling SSL later
+      #volumes:
     volumes:
       - ./nginx-proxy.conf:/etc/nginx/nginx.conf:ro
       - ./logs:/var/log/nginx    # optional logs folder
